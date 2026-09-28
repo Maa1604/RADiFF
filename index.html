@@ -228,7 +228,7 @@ tbody tr.ours td:first-child{color:var(--ours);font-weight:600}
 
   <section class="lanes" id="lanes"></section>
   <section class="verdict" id="verdict"></section>
-  <section class="papers" id="papers" hidden></section>
+  <section class="papers" id="papers"></section>
 
   <section class="src">
     <h2>Measured latency</h2>
@@ -521,10 +521,18 @@ function renderSpeeds(){
   speed=opts[def][0];
 }
 
+/* Inline display beats any stylesheet rule, so this cannot be defeated by .lanes/.papers
+   declaring their own display -- which is what made the earlier `hidden` version depend on a
+   host-injected [hidden]{display:none!important} that only claude.ai supplies. */
+function showOnly(v){
+  lanesEl.style.display   = (v==="race")   ? "flex" : "none";
+  verdictEl.style.display = (v==="race")   ? "grid" : "none";
+  papersEl.style.display  = (v==="report") ? "grid" : "none";
+}
+
 function setMode(v){
   mode=v;
-  lanesEl.hidden=verdictEl.hidden=(v!=="race");
-  papersEl.hidden=(v==="race");
+  showOnly(v);
   ctlTarget.style.display=(v==="race")?"":"none";
   renderSpeeds();
   stop(false); reset();
@@ -550,6 +558,7 @@ document.getElementById("srcBody").innerHTML=MODELS.map(m=>
   (m.ours?"&mdash;":(m.mean/MODELS[0].mean).toFixed(1)+"&times;")+'</td></tr>').join("");
 
 renderSpeeds();
+showOnly("race");
 buildLanes();
 </script>
 </body>
