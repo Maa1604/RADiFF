@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Measured single-study inference latency for four image-only chest X-ray report generators on SRRG-Findings.">
+<title>Studies Per Second</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --paper:#f1f4f3;
+  --surface:#fbfcfc;
+  --surface-2:#e8edec;
+  --ink:#15202a;
+  --muted:#6a7883;
+  --line:#d5dddf;
+  --line-strong:#b9c5c7;
+  --slot:#dde4e4;
+  --ours:#0e6f68;
+  --ours-soft:#cfe6e3;
+  --m2:#5c6b86;
+  --m3:#8a6f4e;
+  --m4:#7c5668;
+  --shadow:0 1px 2px rgba(21,32,42,.06), 0 8px 24px -12px rgba(21,32,42,.18);
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  --display:"Archivo","IBM Plex Sans",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0e1519; --surface:#151e24; --surface-2:#1d282f; --ink:#e2eaec;
+    --muted:#8b9aa3; --line:#26333b; --line-strong:#3a4b55; --slot:#25313a;
+    --ours:#4fc7bb; --ours-soft:#123a38; --m2:#8fa3c4; --m3:#c2a077; --m4:#c090a4;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0e1519; --surface:#151e24; --surface-2:#1d282f; --ink:#e2eaec;
+  --muted:#8b9aa3; --line:#26333b; --line-strong:#3a4b55; --slot:#25313a;
+  --ours:#4fc7bb; --ours-soft:#123a38; --m2:#8fa3c4; --m3:#c2a077; --m4:#c090a4;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--paper); color:var(--ink); font-family:var(--sans);
+  font-size:15px; line-height:1.55; margin:0;
+  padding:clamp(20px,4vw,44px) clamp(16px,4vw,32px) 56px;
+}
+.wrap{max-width:1060px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+
+.mast{display:flex;flex-direction:column;gap:10px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.eyebrow .dot{width:5px;height:5px;border-radius:50%;background:var(--ours)}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(30px,5.2vw,46px);
+  line-height:1.04;letter-spacing:-.022em;margin:0;text-wrap:balance}
+.standfirst{font-size:16px;color:var(--muted);max-width:63ch;margin:0}
+.standfirst b{color:var(--ink);font-weight:600}
+
+.controls{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:flex-end;
+  padding:16px 18px;background:var(--surface);border:1px solid var(--line);
+  border-radius:10px;box-shadow:var(--shadow)}
+.ctl{display:flex;flex-direction:column;gap:6px}
+.ctl > span{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted)}
+.seg{display:flex;border:1px solid var(--line-strong);border-radius:7px;overflow:hidden}
+.seg button{font-family:var(--mono);font-size:12.5px;font-weight:500;padding:7px 13px;
+  border:0;background:transparent;color:var(--muted);cursor:pointer;
+  border-right:1px solid var(--line-strong);transition:background .15s,color .15s}
+.seg button:last-child{border-right:0}
+.seg button:hover{background:var(--surface-2);color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--ours);color:var(--surface);font-weight:600}
+.spacer{flex:1 1 auto;min-width:0}
+.go{font-family:var(--display);font-weight:600;font-size:15px;padding:11px 30px;
+  border-radius:8px;border:1px solid var(--ours);background:var(--ours);color:var(--paper);
+  cursor:pointer;transition:filter .15s,transform .06s}
+.go:hover{filter:brightness(1.1)}
+.go:active{transform:translateY(1px)}
+.go.reset{background:transparent;color:var(--ours)}
+button:focus-visible{outline:2px solid var(--ours);outline-offset:2px}
+.clock{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:13px;
+  color:var(--muted);display:flex;gap:16px;align-items:baseline}
+.clock b{font-size:22px;font-weight:600;color:var(--ink)}
+
+/* ---------------- race ---------------- */
+.lanes{display:flex;flex-direction:column;gap:2px;background:var(--line);
+  border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+.lane{background:var(--surface);padding:15px 18px;display:grid;
+  grid-template-columns:200px 1fr 118px;gap:18px;align-items:center}
+.lane.win{background:var(--ours-soft)}
+.who{display:flex;flex-direction:column;gap:2px;min-width:0}
+.who .nm{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:-.01em;
+  display:flex;align-items:center;gap:7px}
+.who .swatch{width:9px;height:9px;border-radius:2px;flex:none}
+.who .meta{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.who .meta .lat{color:var(--ink);font-weight:500}
+.track{display:flex;gap:2px;height:30px;align-items:stretch;min-width:0}
+.cell{flex:1 1 0;min-width:0;border-radius:1.5px;background:var(--surface-2);
+  transition:background .12s ease-out}
+.cell.on{background:var(--c)}
+.read{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;
+  display:flex;flex-direction:column;gap:1px}
+.read .n{font-size:20px;font-weight:600;line-height:1.15}
+.read .sub{font-size:10.5px;color:var(--muted)}
+.read .sub.done{color:var(--ours);font-weight:500}
+
+.verdict{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;
+  background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.vcell{background:var(--surface);padding:14px 16px;display:flex;flex-direction:column;gap:3px}
+.vcell .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--muted)}
+.vcell .v{font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums}
+.vcell .v.accent{color:var(--ours)}
+.vcell .n{font-size:12.5px;color:var(--muted)}
+
+/* ---------------- report ---------------- */
+.papers{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.doc{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
+.doc.win{border-color:var(--ours)}
+.dochead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+  padding:11px 15px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.dochead .nm{font-family:var(--display);font-weight:600;font-size:14px;
+  display:flex;align-items:center;gap:7px}
+.dochead .swatch{width:9px;height:9px;border-radius:2px;flex:none}
+.dochead .st{font-family:var(--mono);font-size:11px;color:var(--muted);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.dochead .st.done{color:var(--ours);font-weight:600}
+.mech{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);padding:7px 15px 0}
+.body{padding:8px 15px 15px;font-size:12.6px;line-height:1.75;min-height:270px;
+  font-family:var(--mono)}
+.sec{margin:0 0 7px}
+.sec .lbl{font-family:var(--sans);font-weight:600;font-size:11.5px;letter-spacing:.01em;
+  color:var(--ink);display:block}
+.sec.pending .lbl{color:var(--muted)}
+.sec.gated .lbl{color:var(--muted);text-decoration:line-through;text-decoration-thickness:1px}
+.gatenote{font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.02em}
+.tok{display:inline-block;border-radius:2px;transition:background .1s,color .1s}
+.tok.masked{background:var(--slot);color:transparent;user-select:none}
+.tok.fresh{background:var(--ours-soft)}
+.caret{display:inline-block;width:6px;height:1.02em;vertical-align:-.16em;
+  background:var(--c);animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){
+  .cell,.tok{transition:none}
+  .caret{animation:none}
+}
+
+.src{display:flex;flex-direction:column;gap:12px}
+h2{font-family:var(--display);font-weight:600;font-size:17px;letter-spacing:-.012em;margin:0}
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:13.5px}
+th,td{padding:9px 14px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);font-weight:500;background:var(--surface-2)}
+tbody td{font-family:var(--mono);font-variant-numeric:tabular-nums}
+tbody td:first-child{font-family:var(--sans);font-weight:500}
+tbody tr:last-child td{border-bottom:0}
+tbody tr.ours td{background:var(--ours-soft)}
+tbody tr.ours td:first-child{color:var(--ours);font-weight:600}
+.note{font-size:13px;color:var(--muted);max-width:70ch;margin:0}
+.note code{font-family:var(--mono);font-size:12px;background:var(--surface-2);
+  padding:1px 5px;border-radius:3px}
+
+@media (max-width:720px){
+  /* five playback options do not fit one row on a phone */
+  .seg{flex-wrap:wrap}
+  .seg button{padding:7px 10px;font-size:12px}
+  .lane{grid-template-columns:1fr;gap:9px}
+  .read{text-align:left;flex-direction:row;align-items:baseline;gap:8px}
+  .track{height:24px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="mast">
+    <div class="eyebrow">
+      <span class="dot"></span>
+      <span>SRRG-Findings &middot; chest X-ray Findings generation</span>
+      <span>NVIDIA H100 80GB &middot; batch 1 &middot; image-only</span>
+    </div>
+    <h1>Studies Per Second</h1>
+    <p class="standfirst">
+      Four report generators, replayed at their <b>measured</b> per-study latency. Race them for
+      throughput, or switch to <b>Report</b> to watch a single Findings section being written &mdash;
+      three baselines left to right, one token at a time, and RADiFF one anatomical block at a time,
+      filling scattered slots in three denoising passes.
+    </p>
+  </header>
+
+  <div class="controls">
+    <div class="ctl">
+      <span>View</span>
+      <div class="seg" id="segMode">
+        <button data-v="race" aria-pressed="true">Race</button>
+        <button data-v="report" aria-pressed="false">Report</button>
+      </div>
+    </div>
+    <div class="ctl" id="ctlTarget">
+      <span>Race to</span>
+      <div class="seg" id="segTarget">
+        <button data-v="10" aria-pressed="false">10</button>
+        <button data-v="25" aria-pressed="true">25</button>
+        <button data-v="50" aria-pressed="false">50</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <span>Playback</span>
+      <div class="seg" id="segSpeed"></div>
+    </div>
+    <div class="spacer"></div>
+    <div class="clock"><span>elapsed</span><b id="clk">0.00</b><span>s</span></div>
+    <button class="go" id="go">Start</button>
+  </div>
+
+  <section class="lanes" id="lanes"></section>
+  <section class="verdict" id="verdict"></section>
+  <section class="papers" id="papers" hidden></section>
+
+  <section class="src">
+    <h2>Measured latency</h2>
+    <div class="tblwrap">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Params</th><th>s / study</th><th>p95</th>
+              <th>studies / min</th><th>vs RADiFF</th></tr>
+        </thead>
+        <tbody id="srcBody"></tbody>
+      </table>
+    </div>
+    <p class="note">
+      Identical protocol for every row: batch 1, warm-up discarded, <code>torch.cuda.synchronize()</code>
+      around each call, image loading inside the timed region, each baseline at its own published
+      sampling settings. RADiFF is timed at the frozen operating point that produced its quality
+      numbers &mdash; <code>steps=3</code> with the per-study key/value cache on. The
+      context-augmented MAIRA-2 is excluded: it receives the referring indication, technique and
+      prior-study comparison, so it is not an image-only system.
+    </p>
+    <p class="note">
+      The tail advantage is structural. A fixed 8-block &times; 3-step schedule costs the same
+      whatever the report says, so RADiFF's p95/p50 ratio is 1.22; autoregressive decoders pay for
+      every extra token, and MAIRA-2's latency rises about 45% from median to p95. Each replayed
+      study is drawn with that measured spread, not a flat mean.
+    </p>
+    <p class="note">
+      <b>About the Report view.</b> The timings and the decoding schedule are real; the findings text
+      is illustrative, written in the SRRG-Findings eight-category schema. Model outputs on actual
+      studies are not reproduced here, because the underlying MIMIC-CXR and CheXpert reports are
+      governed by a PhysioNet data use agreement that forbids redistribution. The struck-through
+      categories in RADiFF's panel are its per-category emission gate declining to open a section
+      &mdash; calibrating those eight thresholds is worth +17.4 Category F1 over argmax decoding.
+    </p>
+  </section>
+
+</div>
+
+<script>
+const MODELS = [
+  {id:"radiff",   name:"RADiFF",          params:"85M", mean:0.119, p95:0.142, c:"var(--ours)", ours:true, mech:"8 blocks &times; 3 denoising steps &middot; 24 calls"},
+  {id:"chexpert", name:"CheXpert-Plus",   params:"30M", mean:0.164, p95:0.237, c:"var(--m2)",  mech:"autoregressive &middot; one token at a time"},
+  {id:"chexagent",name:"CheXagent-2-3b",  params:"3B",  mean:1.508, p95:2.171, c:"var(--m3)",  mech:"autoregressive &middot; one token at a time"},
+  {id:"maira",    name:"MAIRA-2",         params:"7B",  mean:3.106, p95:4.388, c:"var(--m4)",  mech:"autoregressive &middot; one token at a time"}
+];
+
+/* Illustrative Findings in the SRRG eight-category schema. Five of eight sections present,
+   close to the 4.31 sections/report the references average. */
+const SECTIONS = [
+  {cat:"Lungs and Airways", text:"- No focal consolidation. - No pulmonary edema."},
+  {cat:"Cardiovascular", text:"- The cardiomediastinal silhouette is within normal limits."},
+  {cat:"Pleura", text:"- No pleural effusion or pneumothorax."},
+  {cat:"Musculoskeletal and Chest Wall", text:"- No acute osseous abnormality."},
+  {cat:"Tubes, Catheters, and Support Devices", text:"- Right internal jugular catheter, tip in the distal superior vena cava."},
+  {cat:"Hila and Mediastinum", text:null},
+  {cat:"Other", text:null},
+  {cat:"Abdominal", text:null}
+];
+const EMITTED = SECTIONS.filter(s => s.text);
+const ALL_TOKENS = EMITTED.flatMap(s => [s.cat + ":", ...s.text.split(" ")]);
+
+/* Report playback runs far slower than the race: RADiFF's whole schedule is 24 calls in 119 ms,
+   so watching a block resolve needs roughly a hundredth of real time. `def` is the index the
+   mode opens on. */
+const SPEEDS = {
+  race:   {def:0, opts:[[1,"real time"],[4,"4&times;"],[16,"16&times;"]]},
+  report: {def:2, opts:[[0.005,"0.005&times;"],[0.02,"0.02&times;"],[0.05,"0.05&times;"],
+                        [0.2,"0.2&times;"],[1,"real time"]]}
+};
+
+let mode="race", target=25, speed=1, running=false, raf=null, t0=0;
+const state=new Map();
+
+const lanesEl=document.getElementById("lanes"), verdictEl=document.getElementById("verdict"),
+      papersEl=document.getElementById("papers"), clkEl=document.getElementById("clk"),
+      goEl=document.getElementById("go"), ctlTarget=document.getElementById("ctlTarget"),
+      segSpeed=document.getElementById("segSpeed");
+
+function draw(m){
+  const spread=Math.max(m.p95-m.mean,m.mean*0.02), u=Math.random();
+  return Math.max(m.mean*0.55, m.mean + spread*(Math.pow(u,2.2)*1.9-0.32));
+}
+
+/* ---------- race ---------- */
+function buildLanes(){
+  lanesEl.innerHTML=""; state.clear();
+  for(const m of MODELS){
+    const lane=document.createElement("div");
+    lane.className="lane";
+    const who=document.createElement("div");
+    who.className="who";
+    who.innerHTML='<div class="nm"><span class="swatch" style="background:'+m.c+'"></span>'+m.name+
+      '</div><div class="meta">'+m.params+' &middot; <span class="lat">'+m.mean.toFixed(3)+' s</span>/study</div>';
+    const track=document.createElement("div");
+    track.className="track";
+    for(let i=0;i<target;i++){
+      const c=document.createElement("div");
+      c.className="cell"; c.style.setProperty("--c",m.c); track.appendChild(c);
+    }
+    const read=document.createElement("div");
+    read.className="read";
+    read.innerHTML='<div class="n">0</div><div class="sub">of '+target+'</div>';
+    lane.append(who,track,read); lanesEl.appendChild(lane);
+    state.set(m.id,{m,done:0,next:draw(m),finished:null,cells:track.children,
+      n:read.querySelector(".n"),sub:read.querySelector(".sub"),lane});
+  }
+  renderVerdict(null);
+}
+
+function renderVerdict(results){
+  if(!results){
+    verdictEl.innerHTML=MODELS.map(m=>'<div class="vcell"><div class="k">'+m.name+'</div><div class="v'+
+      (m.ours?" accent":"")+'">'+(target*m.mean).toFixed(1)+'s</div><div class="n">projected for '+
+      target+' studies</div></div>').join("");
+    return;
+  }
+  verdictEl.innerHTML=results.map(r=>'<div class="vcell"><div class="k">'+r.name+'</div><div class="v'+
+    (r.ours?" accent":"")+'">'+r.time.toFixed(1)+'s</div><div class="n">'+
+    (r.ours?"fastest":(r.time/results[0].time).toFixed(1)+"&times; slower")+'</div></div>').join("");
+}
+
+/* ---------- report ---------- */
+function shuffled(n){
+  const a=[...Array(n).keys()];
+  for(let i=n-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+
+function buildPapers(){
+  papersEl.innerHTML=""; state.clear();
+  for(const m of MODELS){
+    const doc=document.createElement("div");
+    doc.className="doc";
+    doc.innerHTML='<div class="dochead"><div class="nm"><span class="swatch" style="background:'+m.c+
+      '"></span>'+m.name+'</div><div class="st">'+m.mean.toFixed(3)+'s</div></div>'+
+      '<div class="mech">'+m.mech+'</div><div class="body"></div>';
+    papersEl.appendChild(doc);
+    const body=doc.querySelector(".body"), st=doc.querySelector(".st");
+    const s={m,doc,body,st,finished:null,total:m.ours?null:0};
+
+    if(m.ours){
+      /* Fixed-capacity layout: every slot exists from the start, so masked slots hold their
+         width and the text does not reflow as tokens land. */
+      s.blocks=SECTIONS.map(sec=>{
+        const p=document.createElement("p");
+        p.className="sec pending";
+        const lbl=document.createElement("span");
+        lbl.className="lbl"; lbl.textContent=sec.cat+":";
+        p.appendChild(lbl);
+        const toks=[];
+        if(sec.text){
+          for(const w of sec.text.split(" ")){
+            const sp=document.createElement("span");
+            sp.className="tok masked"; sp.textContent=w;
+            p.append(sp,document.createTextNode(" "));
+            toks.push(sp);
+          }
+        }
+        body.appendChild(p);
+        return {sec,p,toks,order:shuffled(toks.length),revealed:0};
+      });
+      /* 8 gate calls + 3 denoising steps per emitted block */
+      s.frames=[];
+      s.blocks.forEach((b,bi)=>{
+        s.frames.push({type:"gate",bi});
+        if(b.sec.text) for(let st=0;st<3;st++) s.frames.push({type:"step",bi,st});
+      });
+      s.dt=m.mean/s.frames.length; s.fi=0;
+    } else {
+      s.tokens=ALL_TOKENS;
+      s.dt=m.mean/s.tokens.length; s.ti=0;
+      s.caret=document.createElement("span");
+      s.caret.className="caret"; s.caret.style.setProperty("--c",m.c);
+      s.cur=document.createElement("p"); s.cur.className="sec";
+      body.append(s.cur); s.cur.appendChild(s.caret);
+    }
+    s.next=s.dt;
+    state.set(m.id,s);
+  }
+}
+
+function advanceRadiff(s){
+  const f=s.frames[s.fi++], b=s.blocks[f.bi];
+  if(f.type==="gate"){
+    b.p.classList.remove("pending");
+    if(!b.sec.text){
+      b.p.classList.add("gated");
+      const n=document.createElement("span");
+      n.className="gatenote"; n.textContent=" gated off";
+      b.p.appendChild(n);
+    }
+  } else {
+    const remaining=b.toks.length-b.revealed, left=3-f.st;
+    const n=Math.ceil(remaining/left);
+    b.p.querySelectorAll(".tok.fresh").forEach(t=>t.classList.remove("fresh"));
+    for(let i=0;i<n && b.revealed<b.toks.length;i++,b.revealed++){
+      const t=b.toks[b.order[b.revealed]];
+      t.classList.remove("masked"); t.classList.add("fresh");
+    }
+  }
+}
+
+function advanceAR(s){
+  const w=s.tokens[s.ti++];
+  if(w.endsWith(":") && w.length>6){
+    s.cur=document.createElement("p"); s.cur.className="sec";
+    const lbl=document.createElement("span");
+    lbl.className="lbl"; lbl.textContent=w;
+    s.cur.appendChild(lbl);
+    s.body.appendChild(s.cur);
+  } else {
+    s.cur.appendChild(document.createTextNode(w+" "));
+  }
+  s.cur.appendChild(s.caret);
+}
+
+/* ---------- loop ---------- */
+function tick(now){
+  const elapsed=(now-t0)/1000*speed;
+  clkEl.textContent=elapsed.toFixed(2);
+  let allDone=true;
+
+  for(const s of state.values()){
+    if(mode==="race"){
+      if(s.done>=target) continue;
+      allDone=false;
+      while(s.done<target && elapsed>=s.next){
+        s.cells[s.done].classList.add("on"); s.done++;
+        if(s.done<target) s.next+=draw(s.m);
+      }
+      s.n.textContent=s.done;
+      if(s.done>=target && s.finished===null){
+        s.finished=s.next;
+        s.sub.textContent=s.finished.toFixed(2)+"s";
+        s.sub.classList.add("done");
+        if(s.m.ours) s.lane.classList.add("win");
+      }
+    } else {
+      const len=s.m.ours?s.frames.length:s.tokens.length;
+      const idx=()=>s.m.ours?s.fi:s.ti;
+      if(idx()>=len) continue;
+      allDone=false;
+      while(idx()<len && elapsed>=s.next){
+        s.m.ours?advanceRadiff(s):advanceAR(s);
+        s.next+=s.dt;
+      }
+      s.st.textContent=Math.min(elapsed,s.m.mean).toFixed(3)+"s";
+      if(idx()>=len && s.finished===null){
+        s.finished=s.m.mean;
+        s.st.textContent=s.finished.toFixed(3)+"s";
+        s.st.classList.add("done");
+        if(s.caret) s.caret.remove();
+        s.doc.querySelectorAll(".tok.fresh").forEach(t=>t.classList.remove("fresh"));
+        if(s.m.ours) s.doc.classList.add("win");
+      }
+    }
+  }
+  if(allDone){stop(true);return;}
+  raf=requestAnimationFrame(tick);
+}
+
+function reset(){
+  if(raf) cancelAnimationFrame(raf);
+  raf=null; running=false; clkEl.textContent="0.00";
+  mode==="race"?buildLanes():buildPapers();
+}
+
+function start(){
+  reset(); running=true;
+  goEl.textContent="Reset"; goEl.classList.add("reset");
+  t0=performance.now(); raf=requestAnimationFrame(tick);
+}
+
+function stop(completed){
+  running=false;
+  if(raf) cancelAnimationFrame(raf);
+  raf=null;
+  goEl.textContent=completed?"Run again":"Start";
+  goEl.classList.remove("reset");
+  if(completed && mode==="race"){
+    renderVerdict([...state.values()].map(s=>({name:s.m.name,ours:!!s.m.ours,time:s.finished}))
+      .sort((a,b)=>a.time-b.time));
+  }
+}
+
+function renderSpeeds(){
+  const {def,opts}=SPEEDS[mode];
+  segSpeed.innerHTML=opts.map(([v,l],i)=>
+    '<button data-v="'+v+'" aria-pressed="'+(i===def)+'">'+l+'</button>').join("");
+  speed=opts[def][0];
+}
+
+function setMode(v){
+  mode=v;
+  lanesEl.hidden=verdictEl.hidden=(v!=="race");
+  papersEl.hidden=(v==="race");
+  ctlTarget.style.display=(v==="race")?"":"none";
+  renderSpeeds();
+  stop(false); reset();
+}
+
+function wireSeg(el,apply){
+  el.addEventListener("click",e=>{
+    const b=e.target.closest("button");
+    if(!b) return;
+    [...el.children].forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+    apply(b.dataset.v);
+  });
+}
+wireSeg(document.getElementById("segMode"), v=>setMode(v));
+wireSeg(document.getElementById("segTarget"), v=>{target=Number(v); stop(false); reset();});
+wireSeg(segSpeed, v=>{speed=Number(v);});
+
+goEl.addEventListener("click",()=>running?(stop(false),reset()):start());
+
+document.getElementById("srcBody").innerHTML=MODELS.map(m=>
+  '<tr'+(m.ours?' class="ours"':'')+'><td>'+m.name+'</td><td>'+m.params+'</td><td>'+
+  m.mean.toFixed(3)+'</td><td>'+m.p95.toFixed(3)+'</td><td>'+Math.round(60/m.mean)+'</td><td>'+
+  (m.ours?"&mdash;":(m.mean/MODELS[0].mean).toFixed(1)+"&times;")+'</td></tr>').join("");
+
+renderSpeeds();
+buildLanes();
+</script>
+</body>
+</html>
