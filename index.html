@@ -45,6 +45,10 @@
 }
 
 *{box-sizing:border-box}
+/* .lanes/.papers/.verdict set their own display, and an author rule outranks the browser's
+   built-in [hidden]{display:none} -- so without this the mode switch does nothing and both
+   views render at once. Do not rely on a host-injected reset for it. */
+[hidden]{display:none!important}
 body{
   background:var(--paper); color:var(--ink); font-family:var(--sans);
   font-size:15px; line-height:1.55; margin:0;
