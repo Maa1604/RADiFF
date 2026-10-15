@@ -266,28 +266,6 @@ tbody tr.ours td:first-child{color:var(--ours);font-weight:600}
         <tbody id="srcBody"></tbody>
       </table>
     </div>
-    <p class="note">
-      Identical protocol for every row: batch 1, warm-up discarded, <code>torch.cuda.synchronize()</code>
-      around each call, image loading inside the timed region, each baseline at its own published
-      sampling settings. RADiFF is timed at the frozen operating point that produced its quality
-      numbers &mdash; <code>steps=3</code> with the per-study key/value cache on. The
-      context-augmented MAIRA-2 is excluded: it receives the referring indication, technique and
-      prior-study comparison, so it is not an image-only system.
-    </p>
-    <p class="note">
-      The tail advantage is structural. A fixed 8-block &times; 3-step schedule costs the same
-      whatever the report says, so RADiFF's p95/p50 ratio is 1.22; autoregressive decoders pay for
-      every extra token, and MAIRA-2's latency rises about 45% from median to p95. Each replayed
-      study is drawn with that measured spread, not a flat mean.
-    </p>
-    <p class="note">
-      <b>About the Report view.</b> The timings and the decoding schedule are real; the findings text
-      is illustrative, written in the SRRG-Findings eight-category schema. Model outputs on actual
-      studies are not reproduced here, because the underlying MIMIC-CXR and CheXpert reports are
-      governed by a PhysioNet data use agreement that forbids redistribution. The struck-through
-      categories in RADiFF's panel are its per-category emission gate declining to open a section
-      &mdash; calibrating those eight thresholds is worth +17.4 Category F1 over argmax decoding.
-    </p>
   </section>
 
 </div>
