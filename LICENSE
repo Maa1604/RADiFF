@@ -1,0 +1,39 @@
+RADiFF Research-Only, Non-Commercial License
+
+Copyright (c) 2026 Mohamed Alas, Miquel Obrador-Reina, Luis-Jesus Marhuenda, Alberto Albiol,
+Roberto Paredes, Universitat Politecnica de Valencia.
+
+"Model" means the RADiFF weights, tokenizer, configuration and code in this repository, and any
+derivative of them (including fine-tuned weights and model outputs).
+
+1. Grant. You may use, copy and modify the Model solely for non-commercial research and
+   educational purposes, subject to the conditions below.
+
+2. Non-commercial. You may not use the Model, or anything derived from it, for any commercial
+   purpose, including in a product or service, for consulting, or to provide services to third
+   parties for a fee.
+
+3. No clinical use. The Model is not a medical device. It must not be used for diagnosis,
+   treatment, triage or any other clinical decision, and its outputs must not be presented to
+   patients or used in patient care.
+
+4. Training-data terms. The Model was trained on data derived from MIMIC-CXR (PhysioNet
+   Credentialed Health Data License 1.5.0) and CheXpert / CheXpert Plus (Stanford University
+   School of Medicine research use agreement). You must hold, and comply with, the credentials
+   and data use agreements for those datasets. You must not attempt to extract, reconstruct or
+   re-identify training reports or patients from the Model.
+
+5. Redistribution. You may redistribute the Model or derivatives only under this same license,
+   with this file included, and only to recipients bound by the same conditions. Derivatives
+   must state that they were modified.
+
+6. Third-party components. The image encoder microsoft/rad-dino is not included in this
+   repository; it is downloaded from its own repository and governed by its own license.
+
+7. Attribution. Publications using the Model must cite the RADiFF paper (see README.md).
+
+8. No warranty. THE MODEL IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
+   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY ARISING FROM THE USE OF THE MODEL.
+
+9. Termination. Any breach of these conditions terminates your rights under this license.

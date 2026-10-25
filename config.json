@@ -1,0 +1,52 @@
+{
+  "model_type": "radiff",
+  "architecture": {
+    "vision_encoder": "microsoft/rad-dino",
+    "vision_encoder_revision": "110cbc18d5133582e320b43d53bf5c44e410c936",
+    "vision_encoder_frozen": true,
+    "max_views": 2,
+    "image_size": 518,
+    "vocab_size": 8192,
+    "max_len": 384,
+    "d_model": 768,
+    "nhead": 8,
+    "n_layers": 6,
+    "d_ffn": 3072
+  },
+  "categories": [
+    "Lungs and Airways",
+    "Cardiovascular",
+    "Pleura",
+    "Musculoskeletal and Chest Wall",
+    "Tubes, Catheters, and Support Devices",
+    "Hila and Mediastinum",
+    "Other",
+    "Abdominal"
+  ],
+  "capacities": {
+    "Lungs and Airways": 56,
+    "Cardiovascular": 33,
+    "Pleura": 42,
+    "Musculoskeletal and Chest Wall": 43,
+    "Tubes, Catheters, and Support Devices": 74,
+    "Hila and Mediastinum": 35,
+    "Other": 37,
+    "Abdominal": 25
+  },
+  "decoding": {
+    "steps": 3,
+    "empty_thresholds": [0.50, 0.54, 1.00, 0.96, 0.58, 0.50, 0.50, 0.38],
+    "eob_threshold": 0.95,
+    "kv_cache": true
+  },
+  "training": {
+    "dataset": "StanfordAIMI/srrg_findings (train split, 181,874 studies)",
+    "epochs": 30,
+    "batch_size": 160,
+    "lr": 0.0002,
+    "warmup_steps": 500,
+    "lr_min_ratio": 0.1,
+    "filler_weight": 0.25,
+    "seed": 0
+  }
+}
